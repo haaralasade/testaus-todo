@@ -1,6 +1,6 @@
 /* eslint-env browser */
 /* global document, window, localStorage */
-
+ 
 /**
  * @typedef {Object} Task
  * @property {string} id
@@ -12,9 +12,9 @@
  * @property {number} createdAt
  * @property {number} updatedAt
  */
-
+ 
 'use strict';
-
+ 
 (function () {
   // Storage key and helpers
   const STORAGE_KEY = 'todo_tasks_v1';
@@ -39,7 +39,7 @@
       Date.now().toString(36).slice(-4)
     );
   }
-
+ 
   // DOM refs
   const form = /** @type {HTMLFormElement} */ (
     document.getElementById('task-form')
@@ -74,20 +74,31 @@
   const emptyState = /** @type {HTMLElement} */ (
     document.getElementById('empty-state')
   );
-
+  const filterContainer = document.getElementById('priority-filters');
+ 
   // State
   let tasks = loadTasks();
-
+  let currentFilter = 'all';
+ 
+  function getFilteredTasks() {
+    if (currentFilter === 'all') return tasks;
+    return tasks.filter((t) => t.priority === currentFilter);
+  }
+ 
   // Render
   function render() {
     list.innerHTML = '';
-    if (!tasks.length) {
+ 
+    const visibleTasks = getFilteredTasks();
+ 
+    if (!visibleTasks.length) {
       emptyState.style.display = 'block';
       return;
     }
+ 
     emptyState.style.display = 'none';
-
-    tasks
+ 
+    [...visibleTasks]
       .sort((a, b) => {
         // Not-done first, then by priority (high->low), then newest first
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
@@ -102,31 +113,31 @@
         li.className = 'task' + (t.completed ? ' done' : '');
         li.dataset.id = t.id;
         li.innerHTML = `
-					<div>
-						<div class="title">${escapeHtml(t.topic)}</div>
-						<div class="desc">${escapeHtml(t.description || '')}</div>
-					</div>
-					<div class="meta">
-						<span class="badge prio-${t.priority}">
-							<span class="dot"></span>
-							${t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}
-						</span>
-					</div>
-					<div class="meta">
-						${badgeForStatus(t.status)}
-					</div>
-					<div class="controls">
-						<button data-action="edit" class="secondary">Edit</button>
-						<button data-action="complete" class="${t.completed ? 'secondary' : ''}">
-							${t.completed ? 'Undo' : 'Complete'}
-						</button>
-						<button data-action="delete" class="danger">Delete</button>
-					</div>
-				`;
+          <div>
+            <div class="title">${escapeHtml(t.topic)}</div>
+            <div class="desc">${escapeHtml(t.description || '')}</div>
+          </div>
+          <div class="meta">
+            <span class="badge prio-${t.priority}">
+              <span class="dot"></span>
+              ${t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}
+            </span>
+          </div>
+          <div class="meta">
+            ${badgeForStatus(t.status)}
+          </div>
+          <div class="controls">
+            <button data-action="edit" class="secondary">Edit</button>
+            <button data-action="complete" class="${t.completed ? 'secondary' : ''}">
+              ${t.completed ? 'Undo' : 'Complete'}
+            </button>
+            <button data-action="delete" class="danger">Delete</button>
+          </div>
+        `;
         list.appendChild(li);
       });
   }
-
+ 
   function badgeForStatus(status) {
     const label =
       {
@@ -137,7 +148,7 @@
       }[status] || status;
     return `<span class="badge">${label}</span>`;
   }
-
+ 
   function escapeHtml(str) {
     return String(str)
       .replaceAll('&', '&amp;')
@@ -146,7 +157,7 @@
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
   }
-
+ 
   // Form handling
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -161,7 +172,7 @@
       inputTopic.focus();
       return;
     }
-
+ 
     if (inputId.value) {
       const idx = tasks.findIndex((t) => t.id === inputId.value);
       if (idx !== -1) {
@@ -186,11 +197,11 @@
     resetForm();
     render();
   });
-
+ 
   resetBtn.addEventListener('click', () => {
     resetForm();
   });
-
+ 
   function resetForm() {
     formTitle.textContent = 'Create Task';
     inputId.value = '';
@@ -199,7 +210,7 @@
     inputStatus.value = 'todo';
     saveBtn.textContent = 'Save Task';
   }
-
+ 
   // List actions (event delegation)
   list.addEventListener('click', (e) => {
     const target = /** @type {HTMLElement} */ (e.target);
@@ -211,7 +222,7 @@
     const id = li.dataset.id;
     const idx = tasks.findIndex((t) => t.id === id);
     if (idx === -1) return;
-
+ 
     if (action === 'edit') {
       const t = tasks[idx];
       formTitle.textContent = 'Edit Task';
@@ -247,7 +258,23 @@
       render();
     }
   });
-
+ 
+  // Filter buttons
+  if (filterContainer) {
+    filterContainer.addEventListener('click', (e) => {
+      const btn = e.target;
+      if (btn.tagName !== 'BUTTON') return;
+      currentFilter = btn.dataset.filter;
+ 
+      [...filterContainer.children].forEach((b) =>
+        b.classList.remove('active')
+      );
+      btn.classList.add('active');
+ 
+      render();
+    });
+  }
+ 
   // Initial paint
   render();
 })();
